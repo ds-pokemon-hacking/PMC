@@ -1,9 +1,6 @@
 [submodule "Framework/externals/libRPM"]
 	path = Framework/externals/libRPM
 	url = https://github.com/HelloOO7/libRPM
-[submodule "Framework/externals/ExtLib"]
-	path = Framework/externals/ExtLib
-	url = https://github.com/HelloOO7/ExtLib
 [submodule "Framework/externals/swan"]
 	path = Framework/externals/swan
 	url = https://github.com/kingdom-of-ds-hacking/swan
