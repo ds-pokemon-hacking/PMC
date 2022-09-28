@@ -13,7 +13,7 @@ FULL_COPY_ARM9_0x02005050_InterceptOverlayLoad:
 	MOVS R0, R4 @get back the original parameter
 	BL GFL_OvlLoad @use intercepted overlay loading routine
 	POP {PC}
-	.align 4
+	.align 2
 OVL_344: .word 0x158
 	.size	FULL_COPY_ARM9_0x02005050_InterceptOverlayLoad, .-FULL_COPY_ARM9_0x02005050_InterceptOverlayLoad
 
