@@ -4,3 +4,6 @@
 [submodule "Framework/externals/swan"]
 	path = Framework/externals/swan
 	url = https://github.com/kingdom-of-ds-hacking/swan
+[submodule "Framework/externals/ExtLib"]
+	path = Framework/externals/ExtLib
+	url = https://github.com/HelloOO7/ExtLib
