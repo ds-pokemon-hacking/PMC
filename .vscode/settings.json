@@ -1,0 +1,5 @@
+{
+    "cmake.configureArgs": [
+        "-DPMC_PLATFORM=ARMv5T"
+    ]
+}
