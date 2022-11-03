@@ -1,6 +1,7 @@
 
 #include "PMC_Interface.h"
 
+#include "PMC_ExceptionPrint.h"
 #include "PMC_RPMFramework.h"
 #include "PMC_Common.h"
 #include "nds/fs.h"
@@ -166,6 +167,7 @@ namespace pmc {
     }
 
     void System::Init() {
+        ExceptionPrintInit();
         g_ModulesTail = nullptr;
         fwk::Initialize();
         LoadPatchRPMs();
