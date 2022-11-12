@@ -25,7 +25,7 @@ ENDIF ()
 set(RPM_PLATFORM ${PMC_PLATFORM})
 set(EXL_PLATFORM ${PMC_PLATFORM})
 
-add_compile_definitions(RPM_STATIC_LIBRARY EXL_PLATFORM_GFL)
+add_compile_definitions(RPM_STATIC_LIBRARY)
 
 project(PMCFramework VERSION 0.1.0)
 

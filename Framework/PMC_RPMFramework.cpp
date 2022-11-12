@@ -77,6 +77,10 @@ namespace pmc {
 			mgr->StartModule(mod, rpm::FixLevel::INTERNAL_RELOCATIONS);
 		}
 
+		void* GetProcAddress(PMCModuleHandle handle, const char* name) {
+			return CAST_HANDLE_TO_MODULE(handle)->GetProcAddress(name);
+		}
+
 		PMCModulePriority GetPMCModulePriority(PMCModuleHandle handle) {
 			rpm::Module* mod = CAST_HANDLE_TO_MODULE(handle);
 			rpm::MetaData* metaData = mod->GetMetaData();
@@ -110,8 +114,8 @@ namespace pmc {
 		}
 
 		void CacheFlushModuleListener::OnEvent(rpm::mgr::ModuleManager* mgr, rpm::Module* module, rpm::mgr::ModuleEvent event) {
-			if (event == rpm::mgr::READY) {
-				//Before starting
+			if (event == rpm::mgr::EXEC_UPDATED) {
+				//loading, relocations, imports
 				cp15_flushDC(module, module->GetModuleSize());
 			}
 		}

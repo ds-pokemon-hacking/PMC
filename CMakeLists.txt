@@ -12,10 +12,12 @@ set(CMAKE_CXX_FLAGS "--specs=nosys.specs")
 set(CMAKE_EXE_LINKER_FLAGS "-r -march=armv5t -mthumb" CACHE INTERNAL "")
 
 add_compile_options(-r -march=armv5t -mthumb)
+set(EXL_DESMUME 1)
 add_compile_definitions(EXL_DESMUME)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 add_compile_definitions(DEBUG)
 endif()
+#add_compile_definitions(DEBUG)
 
 ELSE ()
 message(FATAL_ERROR "Invalid target platform!")
@@ -45,7 +47,15 @@ endif()
 
 add_subdirectory(Framework)
 
-add_executable(PMC.elf Interface/PMC_AsmInterface.s Interface/PMC_Interface.h Interface/PMC_Interface.cpp Interface/PMC_ExceptionPrint.h Interface/PMC_ExceptionPrint.cpp)
+add_executable(PMC.elf 
+Interface/PMC_AsmInterface.s 
+Interface/PMC_Interface.h 
+Interface/PMC_Interface.cpp 
+Interface/PMC_ExceptionPrint.h
+Interface/PMC_ExceptionPrint.cpp
+Interface/PMC_Print.h
+Interface/PMC_Print.cpp
+)
 target_link_libraries(PMC.elf PMCFramework)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

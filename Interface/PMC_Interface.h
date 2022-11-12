@@ -23,6 +23,8 @@
 #define OVLID_ARM9_RESERVE 0xFFFE
 #define OVLID_ARM7_RESERVE 0xFFFD
 
+#define NK_PRINTER_INJECT_FUNC "kPrintSetSystemPrinter"
+
 namespace pmc {
     /**
      * @brief List of overlay IDs which a module hooks into.

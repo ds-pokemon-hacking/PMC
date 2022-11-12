@@ -49,6 +49,8 @@ namespace pmc {
 
 		void StartModule(PMCModuleHandle handle);
 
+		void* GetProcAddress(PMCModuleHandle handle, const char* name);
+
 		PMCModulePriority GetPMCModulePriority(PMCModuleHandle handle);
 
 		void LinkModuleExtern(PMCModuleHandle handle, const char* externModule);

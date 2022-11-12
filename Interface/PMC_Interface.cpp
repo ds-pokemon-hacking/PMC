@@ -1,6 +1,7 @@
 
 #include "PMC_Interface.h"
 
+#include "PMC_Print.h"
 #include "PMC_ExceptionPrint.h"
 #include "PMC_RPMFramework.h"
 #include "PMC_Common.h"
@@ -85,7 +86,15 @@ namespace pmc {
     }
 
     void ModuleState::Start() {
-        fwk::StartModule(m_Module);
+        if (m_Module) {
+            fwk::StartModule(m_Module);
+            
+            void* printerFunc = fwk::GetProcAddress(m_Module, NK_PRINTER_INJECT_FUNC);
+            if (printerFunc) {
+                //NK is a resident module so we never have to unregister this
+                debug::AttachToNK(printerFunc);
+            }
+        }
     }
 
     void ModuleState::EnsureLoadAndStart() {
@@ -167,13 +176,18 @@ namespace pmc {
     }
 
     void System::Init() {
-        ExceptionPrintInit();
+        debug::InitPrinter();
+        debug::ExceptionPrintInit();
         g_ModulesTail = nullptr;
         fwk::Initialize();
         LoadPatchRPMs();
         LinkOverlay(OVLID_NULL_RESERVE);
         LinkOverlay(OVLID_ARM7_RESERVE);
         LinkOverlay(OVLID_ARM9_RESERVE);
+        nn::os::Overlay self;
+        self.LoadHeader(0, 344);
+        char* ARM9_ADDRESS = (char*)0x02004000;
+        cp15_flushDC(ARM9_ADDRESS, self.Header.MountAddress - ARM9_ADDRESS);
     }
 
     extern "C" void _PMCSystemInit() {
@@ -268,8 +282,8 @@ namespace pmc {
             // Decompress before continuing.
             sys_uncomp_blz(ovl.Header.MountAddress + codeSize);
         }
-        cp15_flushDC(ovl.Header.MountAddress, ovl.Header.MountSize); // Prepare region for loading.
         LinkOverlay(ovl.Header.OvlID);
+        cp15_flushDC(ovl.Header.MountAddress, ovl.Header.MountSize); //flush the cache AFTER linking so that external relocations are recognized
         for (OvlStaticInitializer *SInit = ovl.Header.StaticInitStart; SInit < ovl.Header.StaticInitEnd; ++SInit) {
             if (*SInit) {
                 (*SInit)();

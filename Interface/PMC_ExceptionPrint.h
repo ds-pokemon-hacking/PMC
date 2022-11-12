@@ -2,8 +2,10 @@
 #define __PMC_EXCEPTIONPRINT_H
 
 namespace pmc {
-    void ExceptionPrintInit();
-    void PrintException(int* regDump, void* data);
+    namespace debug {
+        void ExceptionPrintInit();
+        void PrintException(int* regDump, void* data);
+    }
 }
 
 #endif
