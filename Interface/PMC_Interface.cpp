@@ -233,18 +233,19 @@ namespace pmc {
 
         rootDir.Request = &openReq;
 
-        rootDir.CallSystemCommand(nn::fs::SystemCommand::FS_OPEN_DIR, true);
+        if (rootDir.CallSystemCommand(nn::fs::SystemCommand::FS_OPEN_DIR, true)) {
+            FSFileIterDirResult iterDirResult;
+            rootDir.IterDir.DontNeedReadName = true;
+            rootDir.IterDir.ResultPtr = &iterDirResult;
 
-        FSFileIterDirResult iterDirResult;
-        rootDir.IterDir.DontNeedReadName = true;
-        rootDir.IterDir.ResultPtr = &iterDirResult;
-
-        while (!rootDir.CallFileCommand(nn::fs::FileCommand::FSF_ITERATE_DIR, true)) {
-            if (!iterDirResult.IsDirectory) {
-                if (IsRPM(iterDirResult.FileID)) {
-                    RegistModule(new(fwk::g_UserHeapArea) ModuleState(iterDirResult.FileID));
+            while (rootDir.CallFileCommand(nn::fs::FileCommand::FSF_ITERATE_DIR, true) == 0) {
+                if (!iterDirResult.IsDirectory) {
+                    if (IsRPM(iterDirResult.FileID)) {
+                        RegistModule(new(fwk::g_UserHeapArea) ModuleState(iterDirResult.FileID));
+                    }
                 }
             }
+            rootDir.Close();
         }
     }
 
