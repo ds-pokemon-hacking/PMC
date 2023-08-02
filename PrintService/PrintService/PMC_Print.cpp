@@ -1,3 +1,7 @@
+#include "PMC_Print.h"
+
+#include <stdarg.h>
+
 #include "gfl/str/gfl_systemfont.h"
 #include "gfl/str/gfl_textprint.h"
 #include "gfl/core/gfl_heap.h"
@@ -11,11 +15,6 @@
 #include "nds/svc.h"
 #include "nds/irq.h"
 #include "nds/timer.h"
-#include "Heap/exl_MemOperators.h"
-
-#include "PMC_Print.h"
-
-#include <stdarg.h>
 
 namespace pmc {
     namespace debug {
@@ -274,21 +273,11 @@ namespace pmc {
                 );
             }
         }
-
-        void InitPrinter() {
-            Printer* p = GFL_NEW(HEAPID_SYSTEM, Printer);
-            p->Reset();
-            size_t charBufsize = CHAR_BPT * 0x60;
-            p->SetCharBuf(GFL_MALLOC(HEAPID_SYSTEM, charBufsize), charBufsize);
-            size_t mapCount = TILES_PER_LINE * 24;
-            p->SetSurface(GFL_NEW_ARRAY(HEAPID_SYSTEM, u16, mapCount), 24);
-            sys_memset32_fast(0, p->MapBase, mapCount * sizeof(u16));
-            GFL_VBlankTCBAdd(PrinterScreenSwapTCB, p, 0);
-
-            ConvGFLFontToChars(p->CharBuf, g_SystemFont);
-
-            g_DebugPrinter = p; //do this at end so that the vblank does not fire before ready
-        }
+        
+        enum DllMainReason {
+            DLL_MODULE_LOAD,
+            DLL_MODULE_UNLOAD
+        };
 
         namespace nkextra {
             class Printer {
@@ -298,6 +287,21 @@ namespace pmc {
             };
 
             typedef void (*SetPrinterProc)(Printer* printer);
+        }
+
+        void InitPrinter() {
+            Printer* p = GFL_NEW(HEAPID_SYSTEM) Printer();
+            p->Reset();
+            size_t charBufsize = CHAR_BPT * 0x60;
+            p->SetCharBuf(GFL_MALLOC(HEAPID_SYSTEM, charBufsize), charBufsize);
+            size_t mapCount = TILES_PER_LINE * 24;
+            p->SetSurface(GFL_NEW(HEAPID_SYSTEM) u16[mapCount], 24);
+            sys_memset32_fast(0, p->MapBase, mapCount * sizeof(u16));
+            GFL_VBlankTCBAdd(PrinterScreenSwapTCB, p, 0);
+
+            ConvGFLFontToChars(p->CharBuf, g_SystemFont);
+
+            g_DebugPrinter = p; //do this at end so that the vblank does not fire before ready
         }
 
         namespace EWL_C {
@@ -332,8 +336,7 @@ namespace pmc {
 
         void AttachToNK(void* nkPrinterSetFunc) {
             if (g_NKPrinter == nullptr) {
-                g_NKPrinter = GFL_NEW(HEAPID_SYSTEM, NKPrinter);
-                g_NKPrinter = new(static_cast<void*>(g_NKPrinter)) NKPrinter(g_DebugPrinter); //placement new
+                g_NKPrinter = GFL_NEW(HEAPID_SYSTEM) NKPrinter(g_DebugPrinter);
             }
             reinterpret_cast<nkextra::SetPrinterProc>(nkPrinterSetFunc)(g_NKPrinter);
         }
@@ -342,6 +345,16 @@ namespace pmc {
             if (g_DebugPrinter) {
                 g_DebugPrinter->Print(str, 0xFFFFFFFF);
             }
+        }
+
+        void Printf(const char* fmt, ...) {
+            va_list args;
+            va_start(args, fmt);
+
+            if (g_NKPrinter) {
+                g_NKPrinter->Printf(fmt, args);
+            }
+            va_end(args);
         }
     }
 }

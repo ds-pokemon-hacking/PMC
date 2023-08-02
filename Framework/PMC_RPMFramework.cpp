@@ -10,28 +10,21 @@
 
 #define CAST_HANDLE_TO_MODULE(handle) static_cast<rpm::Module*>((handle))
 
-#include "gfl/core/gfl_heap.h"
 #include "nds/cp15.h"
 
 namespace pmc {
 	namespace fwk {
-		void*					g_ModuleMemory;
-		void*					g_UserMemory;
-		exl::heap::HeapArea* 	g_ModuleHeapArea;
+		exl::heap::Allocator* 	g_MainAllocator;
 		exl::heap::HeapArea* 	g_UserHeapArea;
 
 		rpm::mgr::ModuleManager* 	g_ModuleManager;
 		NTRExternalRelocator*		g_ExternRelocator;
 		CacheFlushModuleListener* 	g_CacheFlusher;
 
-		void Initialize() {
-			g_ModuleMemory = GFL_MALLOC(HEAPID_USER, PMC_MODULEHEAP_SIZE);
-			g_UserMemory = GFL_MALLOC(HEAPID_USER, PMC_USERHEAP_SIZE);
-			void* moduleMemMgrBuf = GFL_MALLOC(HEAPID_USER, sizeof(exl::heap::HeapArea));
-			void* userMemMgrBuf = GFL_MALLOC(HEAPID_USER, sizeof(exl::heap::HeapArea));
-			g_ModuleHeapArea = new(moduleMemMgrBuf) exl::heap::HeapArea("ModuleMemory", g_ModuleMemory, PMC_MODULEHEAP_SIZE);
-			g_UserHeapArea = new(userMemMgrBuf) exl::heap::HeapArea("UserMemory", g_UserMemory, PMC_USERHEAP_SIZE);
-			g_ModuleManager = new(g_UserHeapArea) rpm::mgr::ModuleManager(g_ModuleHeapArea);
+		void Initialize(exl::heap::Allocator* allocator) {
+			g_MainAllocator = allocator;
+			g_UserHeapArea = exl::heap::HeapArea::CreateFrom(g_MainAllocator, "UserMemory", PMC_USERHEAP_SIZE);
+			g_ModuleManager = new(g_UserHeapArea) rpm::mgr::ModuleManager(g_MainAllocator);
 			g_ExternRelocator = new(g_UserHeapArea) pmc::fwk::NTRExternalRelocator();
 			g_CacheFlusher = new(g_UserHeapArea) pmc::fwk::CacheFlushModuleListener();
 			g_ModuleManager->BindExternalRelocator(g_ExternRelocator);
@@ -41,10 +34,7 @@ namespace pmc {
 		void Terminate() {
 			delete g_ModuleManager;
 			delete g_ExternRelocator;
-			GFL_FREE(g_ModuleHeapArea);
-			GFL_FREE(g_UserHeapArea);
-			GFL_FREE(g_ModuleMemory);
-			GFL_FREE(g_UserMemory);
+			delete g_UserHeapArea;
 		}
 
 		rpm::init::ModuleAllocation AllocModuleMemory(size_t size) {

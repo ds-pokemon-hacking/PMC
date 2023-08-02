@@ -20,16 +20,14 @@ namespace pmc {
 			virtual void OnEvent(rpm::mgr::ModuleManager* mgr, rpm::Module* module, rpm::mgr::ModuleEvent event) override;
 		};
 
-		extern void*					g_ModuleMemory;
-		extern void*					g_UserMemory;
-		extern exl::heap::HeapArea* 	g_ModuleHeapArea;
+		extern exl::heap::Allocator* 	g_MainAllocator;
 		extern exl::heap::HeapArea* 	g_UserHeapArea;
 
 		extern rpm::mgr::ModuleManager* 	g_ModuleManager;
 		extern NTRExternalRelocator*		g_ExternRelocator;
 		extern CacheFlushModuleListener* 	g_CacheFlusher;
 
-		void Initialize();
+		void Initialize(exl::heap::Allocator* allocator);
 
 		void Terminate();
 

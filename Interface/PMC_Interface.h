@@ -11,10 +11,13 @@
 #ifndef __PMCCPPINTERFACE_H
 #define __PMCCPPINTERFACE_H
 
+#include "PMC_Common.h"
+
 #include "swantypes.h"
 #include "nds/fs.h"
 #include "nds/overlay.h"
-#include "PMC_Common.h"
+
+#include "Heap/exl_Allocator.h"
 
 #define MODULENAME_ARM9 "ARM9"
 #define MODULENAME_ARM7 "ARM7"
@@ -22,6 +25,8 @@
 #define OVLID_NULL_RESERVE 0xFFFFFFFF
 #define OVLID_ARM9_RESERVE 0xFFFE
 #define OVLID_ARM7_RESERVE 0xFFFD
+
+#define PMC_SYSHEAP_MAX_SIZE (160 * 1024)
 
 #define NK_PRINTER_INJECT_FUNC "kPrintSetSystemPrinter"
 
@@ -34,10 +39,13 @@ namespace pmc {
         int IDs[];
     };
 
+    struct ModuleChain;
+
     /**
      * @brief Information about a patch module.
      */
     class ModuleState {
+        friend class ModuleChain;
     private:
         /**
          * @brief Internal RomFS ID of the executable file.
@@ -122,10 +130,37 @@ namespace pmc {
         friend class System;
     };
 
+    struct ModuleChain {
+        ModuleState* Head{nullptr};
+        ModuleState* Tail{nullptr};
+
+        void Append(ModuleState* module);
+    };
+
     /**
      * @brief Tail of the module chain linked list.
      */
-    static ModuleState* g_ModulesTail = nullptr;
+    static ModuleChain g_Modules;
+    
+    class OverlayMonitor {
+        static constexpr int MAX_OVERLAYS = 512;
+
+        u32 m_LoadedOverlays[(MAX_OVERLAYS + 31) / 32];
+    public:
+        inline bool IsOverlayLoaded(int ovlId) {
+            return m_LoadedOverlays[ovlId >> 5] & (1 << (ovlId & 31));
+        }
+
+        inline void SetOverlayLoaded(int ovlId) {
+            m_LoadedOverlays[ovlId >> 5] |= (1 << (ovlId & 31));
+        }
+
+        inline void SetOverlayUnloaded(int ovlId) {
+            m_LoadedOverlays[ovlId >> 5] &= ~(1 << (ovlId & 31));
+        }
+    };
+
+    static OverlayMonitor g_OvlMonitor;
 
     class System {    
     public:
@@ -138,10 +173,14 @@ namespace pmc {
          */
         static void Terminate();
 
+        static exl::heap::Allocator* CreateSystemAllocator();
+
         /**
          * @brief Detects RPM patches stored in RomFS.
          */
         static void LoadPatchRPMs();
+
+        static void AppendToModuleChain(ModuleChain* chain, ModuleState* module);
 
         /**
          * @brief Registers a patch module into the module chain.

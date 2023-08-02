@@ -51,12 +51,10 @@ add_executable(PMC.elf
 Interface/PMC_AsmInterface.s 
 Interface/PMC_Interface.h 
 Interface/PMC_Interface.cpp 
-Interface/PMC_ExceptionPrint.h
-Interface/PMC_ExceptionPrint.cpp
-Interface/PMC_Print.h
-Interface/PMC_Print.cpp
 )
 target_link_libraries(PMC.elf PMCFramework)
+
+add_subdirectory(PrintService)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

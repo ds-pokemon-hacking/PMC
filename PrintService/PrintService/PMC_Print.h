@@ -8,6 +8,8 @@ namespace pmc {
         void AttachToNK(void* nkPrinterSetFunc);
 
         void Print(const char* str);
+
+        void Printf(const char* fmt, ...);
     }
 }
 

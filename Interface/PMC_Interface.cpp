@@ -1,18 +1,17 @@
 
 #include "PMC_Interface.h"
 
-#include "PMC_Print.h"
-#include "PMC_ExceptionPrint.h"
 #include "PMC_RPMFramework.h"
 #include "PMC_Common.h"
+
+#include "Util/exl_StrEq.h"
+#include <cstdlib>
+
 #include "nds/fs.h"
 #include "nds/cp15.h"
 #include "nds/overlay.h"
 #include "nds/hw.h"
 #include "nds/compression.h"
-#include "gfl/core/gfl_overlay.h"
-#include "Util/exl_StrEq.h"
-#include <cstdlib>
 
 namespace pmc {
     namespace hooks {
@@ -60,7 +59,7 @@ namespace pmc {
         file.OpenID(fileId);
         file.Read(&moduleHeader, sizeof(rpm::Module));
         
-        char *buffer = new(fwk::g_ModuleHeapArea) char[moduleHeader.GetModuleSize()];
+        char *buffer = new(fwk::g_MainAllocator) char[moduleHeader.GetModuleSize()];
         file.Seek(0, nn::fs::SeekOrigin::IO_SEEK_SET);
         file.Read(buffer, file.GetSize());
         file.Close();
@@ -81,6 +80,7 @@ namespace pmc {
             m_Module = NULL;
             if (m_ExternList) {
                 delete m_ExternList;
+                m_ExternList = nullptr;
             }
         }
     }
@@ -88,12 +88,6 @@ namespace pmc {
     void ModuleState::Start() {
         if (m_Module) {
             fwk::StartModule(m_Module);
-            
-            void* printerFunc = fwk::GetProcAddress(m_Module, NK_PRINTER_INJECT_FUNC);
-            if (printerFunc) {
-                //NK is a resident module so we never have to unregister this
-                debug::AttachToNK(printerFunc);
-            }
         }
     }
 
@@ -175,11 +169,37 @@ namespace pmc {
         return false;
     }
 
+    void ModuleChain::Append(ModuleState* module) {
+        module->m_PrevNode = Tail;
+        module->m_NextNode = nullptr;
+        if (!Head) {
+            Head = module;
+        }
+        else {
+            Tail->m_NextNode = module;
+        }
+        Tail = module;
+    }
+
+    extern "C" {
+        extern u32 os_MemRegionStarts[];
+        extern u32 os_MemRegionEnds[];
+    };
+
+    static int heapSize;
+
+    exl::heap::Allocator* System::CreateSystemAllocator() {
+        u32 availSize = os_MemRegionEnds[0] - os_MemRegionStarts[0];
+        u32 allocatedSize = (availSize > PMC_SYSHEAP_MAX_SIZE ? PMC_SYSHEAP_MAX_SIZE : availSize) & ~7;
+        os_MemRegionEnds[0] &= ~7;
+        os_MemRegionEnds[0] -= allocatedSize;
+        heapSize = allocatedSize;
+        return exl::heap::HeapArea::CreateIn("PMCSystemHeap", reinterpret_cast<void*>(os_MemRegionEnds[0]), allocatedSize);
+    }
+
     void System::Init() {
-        debug::InitPrinter();
-        debug::ExceptionPrintInit();
-        g_ModulesTail = nullptr;
-        fwk::Initialize();
+        g_Modules = ModuleChain();
+        fwk::Initialize(CreateSystemAllocator());
         LoadPatchRPMs();
         LinkOverlay(OVLID_NULL_RESERVE);
         LinkOverlay(OVLID_ARM7_RESERVE);
@@ -216,6 +236,18 @@ namespace pmc {
         return magic == ('D' | ('L' << 8) | ('X' << 16) | ('F' << 24));
     }
 
+    void System::AppendToModuleChain(ModuleChain* chain, ModuleState* module) {
+        module->m_PrevNode = chain->Tail;
+        module->m_NextNode = nullptr;
+        if (!chain->Head) {
+            chain->Head = module;
+        }
+        else {
+            chain->Tail->m_NextNode = module;
+        }
+        chain->Tail = module;
+    }
+
     void System::LoadPatchRPMs() {
         nn::fs::File rootDir;
 
@@ -233,6 +265,9 @@ namespace pmc {
 
         rootDir.Request = &openReq;
 
+        ModuleChain modulesByPriority[PMC_PRIORITY_END + 1];
+        memset(modulesByPriority, 0, sizeof(modulesByPriority));
+
         if (rootDir.CallSystemCommand(nn::fs::SystemCommand::FS_OPEN_DIR, true)) {
             FSFileIterDirResult iterDirResult;
             rootDir.IterDir.DontNeedReadName = true;
@@ -241,26 +276,32 @@ namespace pmc {
             while (rootDir.CallFileCommand(nn::fs::FileCommand::FSF_ITERATE_DIR, true) == 0) {
                 if (!iterDirResult.IsDirectory) {
                     if (IsRPM(iterDirResult.FileID)) {
-                        RegistModule(new(fwk::g_UserHeapArea) ModuleState(iterDirResult.FileID));
+                        ModuleState* ms = new(fwk::g_UserHeapArea) ModuleState(iterDirResult.FileID);
+                        AppendToModuleChain(&modulesByPriority[ms->m_Priority], ms);
                     }
                 }
             }
             rootDir.Close();
         }
+
+        for (int priority = PMC_PRIORITY_BEGIN; priority <= PMC_PRIORITY_END; priority++) {
+            ModuleState* head = modulesByPriority[priority].Head;
+            while (head) {
+                ModuleState* next = head->m_NextNode; //get this here as switching chains will modify the value
+                AppendToModuleChain(&g_Modules, head);
+                head = next;
+            }
+        }
     }
 
     void System::RegistModule(ModuleState* module) {
-        module->m_PrevNode = g_ModulesTail;
-        module->m_NextNode = nullptr;
-        if (g_ModulesTail) {
-            g_ModulesTail->m_NextNode = module;
-        }
-        g_ModulesTail = module;
+        
     }
 
     b32 System::LoadOverlay(int target, u32 ovlId) {
         nn::os::Overlay overlay;
         if (overlay.LoadHeader(target, ovlId) && overlay.Mount()) {
+            g_OvlMonitor.SetOverlayLoaded(ovlId);
             StartOverlay(overlay);
             return true;
         }
@@ -295,44 +336,29 @@ namespace pmc {
     void System::LinkOverlay(u32 ovlId) {
         ModuleState *m;
 
-        for (int priority = PMC_PRIORITY_BEGIN; priority <= PMC_PRIORITY_END; priority++) {
-            m = g_ModulesTail;
-            while (m) {
-                if (m->m_Priority == priority) {
-                    if (ovlId == OVLID_NULL_RESERVE && m->m_OverlayList->Count == 0) {
+        m = g_Modules.Head;
+        while (m) {
+            if (ovlId == OVLID_NULL_RESERVE && m->m_OverlayList->Count == 0) {
+                m->EnsureLoadAndStart();
+            }
+            else {
+                for (int index = 0; index < m->m_OverlayList->Count; index++) {
+                    if (m->m_OverlayList->IDs[index] == ovlId) {
                         m->EnsureLoadAndStart();
-                    }
-                    else {
-                        for (int index = 0; index < m->m_OverlayList->Count; index++) {
-                            if (m->m_OverlayList->IDs[index] == ovlId) {
-                                m->EnsureLoadAndStart();
 
-                                fwk::LinkModuleExtern(m->m_Module, m->m_ExternList->Names[index]);
-                                break;
-                            }
-                        }
+                        fwk::LinkModuleExtern(m->m_Module, m->m_ExternList->Names[index]);
+                        break;
                     }
                 }
-                m = m->m_PrevNode;
             }
+            m = m->m_NextNode;
         }
-    }
-
-    b32 CheckOvlLoaded(u32 ovlId) {
-        gfl::ovl::Region rgn = gfl::ovl::Manager::GetMemoryRegion(ovlId);
-        gfl::ovl::Handle* list = gfl::ovl::Manager::GetOvlList(rgn);
-        u8 count = gfl::ovl::Manager::GetOvlCount(rgn);
-          
-        for (int i = 0; i < count; i++, list++) {
-            if (list->Exists && list->OvlID == ovlId) {
-                return true;
-            }
-        }
-        return false;
     }
 
     void System::NotifyUnloadOverlay(u32 unloadedOvlId) {    
-        ModuleState* m = g_ModulesTail;
+        ModuleState* m = g_Modules.Head;
+
+        g_OvlMonitor.SetOverlayUnloaded(unloadedOvlId);
 
         while (m) {
             if (m->m_Module && !m->IsResident()) {
@@ -345,7 +371,7 @@ namespace pmc {
                         continue;
                     }
 
-                    if (CheckOvlLoaded(ovlId)) {
+                    if (g_OvlMonitor.IsOverlayLoaded(ovlId)) {
                         existAnyModule = true;
                         break;
                     }
@@ -356,7 +382,7 @@ namespace pmc {
                 }
             }
 
-            m = m->m_PrevNode;
-        }   
+            m = m->m_NextNode;
+        }
     }
 }

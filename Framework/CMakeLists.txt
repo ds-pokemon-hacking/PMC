@@ -64,6 +64,7 @@ endif ()
 
 add_library(PMCFramework.Include OBJECT PMC_Common.h)
 target_include_directories(PMCFramework.Include PUBLIC .)
+set_target_properties(PMCFramework.Include PROPERTIES LINKER_LANGUAGE CXX)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
