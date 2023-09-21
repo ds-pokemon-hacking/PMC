@@ -1,5 +1,6 @@
 {
     "cmake.configureArgs": [
-        "-DPMC_PLATFORM=ARMv5T"
+        "-DPMC_PLATFORM=ARMv5T",
+        "-DPMC_GAME=IREO"
     ]
 }

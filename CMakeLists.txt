@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 
 message("Target platform: " ${PMC_PLATFORM})
+message("Building for game: " ${PMC_GAME})
 
 IF (PMC_PLATFORM STREQUAL "ARMv5T")
 message("Building for ARMv5T")
@@ -48,10 +49,11 @@ endif()
 add_subdirectory(Framework)
 
 add_executable(PMC.elf 
-Interface/PMC_AsmInterface.s 
+Interface/PMC_AsmInterface_${PMC_GAME}.s 
 Interface/PMC_Interface.h 
 Interface/PMC_Interface.cpp 
 )
+
 target_link_libraries(PMC.elf PMCFramework)
 
 add_subdirectory(PrintService)
