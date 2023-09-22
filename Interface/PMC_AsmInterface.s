@@ -1,31 +1,29 @@
-.type	FULL_COPY_ARM9_0x02005050_InterceptOverlayLoad, %function
-.type	FULL_COPY_ARM9_0x02005268_InjectInterceptor, %function
+.type	FULL_COPY_ARM9_0x0200400C_PMCBootCode, %function
+.type	FULL_COPY_main_0x6, %function
 
 .thumb
 
-FULL_COPY_ARM9_0x02005050_InterceptOverlayLoad:
+FULL_COPY_ARM9_0x0200400C_PMCBootCode: @Inject to garbage data in secure area
 	PUSH {LR}
-	MOVS R4, R0 @remember intercepted parameter
+	BL GFLAppInit @Call the earlier-overwritten GFLAppInit
 	MOVS R0, #0 @ARM9 processor
 	LDR R1, OVL_344
 	BL sys_load_overlay @overlay loaded, now call system initializers
 	BL _PMCSystemInit
-	MOVS R0, R4 @get back the original parameter
-	BL GFL_OvlLoad @use intercepted overlay loading routine
 	POP {PC}
 	.align 2
 OVL_344: .word 0x158
-	.size	FULL_COPY_ARM9_0x02005050_InterceptOverlayLoad, .-FULL_COPY_ARM9_0x02005050_InterceptOverlayLoad
+	.size	FULL_COPY_ARM9_0x0200400C_PMCBootCode, .-FULL_COPY_ARM9_0x0200400C_PMCBootCode
 
-FULL_COPY_ARM9_0x02005268_InjectInterceptor:
-	BL 0x02005051
-	.size	FULL_COPY_ARM9_0x02005268_InjectInterceptor, .-FULL_COPY_ARM9_0x02005268_InjectInterceptor
+FULL_COPY_main_0x6: @hook instead of GFLAppInit in main(). The reason why we are not doing this in SystemInit is that a lot of patches might want to use GFL functions in their DllMain.
+	BL 0x0200400D
+	.size	FULL_COPY_main_0x6, .-FULL_COPY_main_0x6
 
-FULL_COPY_ARM9_0x0207B41C_ResizeMemoryForOvl344:
+FULL_COPY_GetUserMemRegionDefaultStart_0x7C_AdjustHeapStart:
 	.word 0x022050C0
-	.size	FULL_COPY_ARM9_0x0207B41C_ResizeMemoryForOvl344, .-FULL_COPY_ARM9_0x0207B41C_ResizeMemoryForOvl344
+	.size	FULL_COPY_GetUserMemRegionDefaultStart_0x7C_AdjustHeapStart, .-FULL_COPY_GetUserMemRegionDefaultStart_0x7C_AdjustHeapStart
 
-FULL_COPY_ARM9_0x02071080_UncapOverlayMaximum:
+FULL_COPY_sys_read_overlay_header_0xFC_UncapOverlayMaximum:
 	.word 0x7FFFFFFF
-	.size	FULL_COPY_ARM9_0x02071080_UncapOverlayMaximum, .-FULL_COPY_ARM9_0x02071080_UncapOverlayMaximum
+	.size	FULL_COPY_sys_read_overlay_header_0xFC_UncapOverlayMaximum, .-FULL_COPY_sys_read_overlay_header_0xFC_UncapOverlayMaximum
 	
