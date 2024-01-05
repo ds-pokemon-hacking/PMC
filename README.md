@@ -5,7 +5,7 @@ PMC is a simple, yet flexible code injection framework for Pokémon Black 2 and 
 ## Installation
 You can either snatch a binary build from the [releases](https://github.com/kingdom-of-ds-hacking/PMC/releases) page, or build it from source using the instructions below.
 
-Once you do that, open your project in `CTRMap-CE` (ensuring the `CTRMapV` plugin is installed), go to the `Extras` tab, and install PMC.
+Once you do that, open your project in [CTRMap-CE](https://github.com/kingdom-of-ds-hacking/CTRMap-CE) **(ensuring the latest version of the [CTRMapV](https://github.com/kingdom-of-ds-hacking/CTRMapV) plugin is installed)**, go to the `Extras` tab, and install PMC.
 
 ## Building PMC
 ### Prerequisites
