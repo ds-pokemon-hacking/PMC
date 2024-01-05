@@ -35,7 +35,7 @@ $ git clone https://github.com/kingdom-of-ds-hacking/PMC.git --recursive
 4. Open the command palette (`Ctrl + Shift + P`) and run `CMake: Configure`. **Resolve any errors if there are any.**
 5. Open the command palette (`Ctrl + Shift + P`) and run `CMake: Build` (or click the `Build` button at the bottom of Visual Studio Code).
 
-If all goes well, you should have a `PMC.elf`, which can then be linked with the [RPM Authoring Tools](https://github.com/HelloOO7/RPMAuthoringTools) and a proper external symbol database (ESDB). These ESDBs should be provided with the [swan](https://github.com/kingdom-of-ds-hacking/swan) headers repository, under `IRDO.yml` and `IREO.yml` for the USA Pokémon White 2 and Black 2, respectively.
+If all goes well, proceed to `Linking`.
 
 #### Terminal
 Assuming you are building PMC through the terminal (or some Linux-based environment), you can follow the steps below. For Windows users, you will just need to supplement the commands with the correct equivalents.
@@ -57,4 +57,12 @@ $ cd build
 $ cmake .. -DPMC_PLATFORM=ARMv5T
 ```
 
-If all goes well, you should have a `PMC.elf`, which can then be linked with the [RPM Authoring Tools](https://github.com/HelloOO7/RPMAuthoringTools) and a proper external symbol database (ESDB). These ESDBs should be provided with the [swan](https://github.com/kingdom-of-ds-hacking/swan) headers repository, under `IRDO.yml` and `IREO.yml` for the USA Pokémon White 2 and Black 2, respectively.
+Once the build completes, carry on to `Linking`.
+
+### Linking
+
+The build process should have produced a `PMC.elf`, which can then be linked with the [RPM Authoring Tools](https://github.com/HelloOO7/RPMAuthoringTools) and a proper external symbol database (ESDB). These ESDBs should be provided with the [swan](https://github.com/kingdom-of-ds-hacking/swan) headers repository, under `IRDO.yml` and `IREO.yml` for the USA Pokémon White 2 and Black 2, respectively. To allow CTRMap to properly recognize your PMC build, it is required that you bundle it with version metadata. You can either use the default metadata from the `BuildFiles` subdirectory or make your own. In order to link all these together, run RPMTool with at least the following parameters:
+
+```
+<RPMTool> -i "<PMC directory>/build/PMC.elf" -o "<your output RPM file>.rpm" --esdb "<swan directory>/GAME.yml" --meta "<PMC directory>/BuildFiles/version_game.yml (or your own metadata)"
+```
