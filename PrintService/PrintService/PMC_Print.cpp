@@ -182,7 +182,8 @@ namespace pmc {
                     else if (c == '\n') {
                         //fill remaining tiles in line with gap
                         u32 fillCount = TILES_PER_LINE - (MapIndex & 31);
-                        sys_memset32_fast(0, out + MapIndex, fillCount << 1);
+                        //bugfix: this must be 16-bit memset as the offset may not be 32-bit aligned
+                        sys_memset16(0, out + MapIndex, fillCount << 1);
                         MapIndex += fillCount;
                     }
                     else {
