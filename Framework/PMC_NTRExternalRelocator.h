@@ -13,7 +13,7 @@ namespace pmc {
 			public:
 				void ProcessRelocation(rpm::Module* module, rpm::Relocation* rel) {
 					u32 addr = rel->Target.Offset;
-					rpm::Util::CutAlign16(&addr);
+					rpm::Util::AlignForRelocInstruction(&addr, rel->Target.RelProcType);
 
 					u8* code = reinterpret_cast<u8*>(addr); //absolute memory address
 
